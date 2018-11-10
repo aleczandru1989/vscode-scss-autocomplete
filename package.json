@@ -25,22 +25,17 @@
                     "default": true,
                     "description": "Allows display of info."
                 },
-                "scss.toolkit.maxNumberOfProblems": {
-                    "scope": "resource",
-                    "type": "number",
-                    "default": 100,
-                    "description": "Controls the maximum number of problems produced by the server."
+                "scss.toolkit.include": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Scans path patterns to include in autocomplete."
                 },
-                "scss.toolkit.trace.server": {
-                    "scope": "window",
-                    "type": "string",
-                    "enum": [
-                        "off",
-                        "messages",
-                        "verbose"
+                "scss.toolkit.exclude": {
+                    "type": "array",
+                    "default": [
+                        "**/node_modules/**"
                     ],
-                    "default": "off",
-                    "description": "Traces the communication between VS Code and the language server."
+                    "description": "Exclude paths from scanning"
                 }
             }
         }
@@ -81,9 +76,9 @@
     "devDependencies": {
         "@types/readdir-enhanced": "^2.2.0",
         "typescript": "^2.6.1",
-        "vscode": "^1.1.21",
         "tslint": "^5.11.0",
         "@types/node": "^10.12.2",
-        "@types/mocha": "^2.2.42"
+        "@types/mocha": "^2.2.42",
+        "vscode": "^1.1.21"
     }
 }

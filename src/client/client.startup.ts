@@ -1,15 +1,21 @@
 import * as path from 'path';
-import { ExtensionContext, workspace } from 'vscode';
+import { Uri, workspace } from 'vscode';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+
+import { SERVER_EVENT } from '../common/event';
 
 let client: LanguageClient;
 
-export function activate(context: ExtensionContext) {
-    client = new LanguageClient("scss.toolkit", 'SCSS Toolkit', createServerOptions(), createClientOptions());
+export function activate() {
+    client = new LanguageClient('scss.toolkit', 'SCSS Toolkit', createServerOptions(), createClientOptions());
 
     client.start();
 
-    client.onReady().then(() => subscribeToClientEvents(context));
+    client.onReady().then(() => {
+        workspace.findFiles('**/*.scss', null, 99999)
+            .then((uris: Uri[]) =>
+                client.sendNotification(SERVER_EVENT.WORKSPACE_FILE_URI, [uris.map(uri => uri.fsPath)]));
+    });
 }
 
 export function deactivate() {
@@ -18,17 +24,6 @@ export function deactivate() {
     }
 }
 
-function subscribeToClientEvents(context: ExtensionContext) {
-    //  context.subscriptions.push(languages.registerCompletionItemProvider(['scss'], new AutocompleteService()));
-
-    // window.onDidChangeActiveTextEditor(() => {
-    //     const editor = window.activeTextEditor;
-
-    //     if (editor && editor.document.languageId === 'scss') {
-    //         client.sendRequest('changeActiveDocument', editor.document);
-    //     }
-    // });
-}
 
 function createServerOptions() {
     const server = path.join(__dirname, '../server', 'server.startup.js');
@@ -41,7 +36,7 @@ function createServerOptions() {
             module: server,
             transport: TransportKind.ipc,
             options: {
-                execArgv: ['--nolazy', '--inspect=9229', '--inspect-brk']
+                execArgv: ['--nolazy', '--inspect=9229']
             }
         }
     };

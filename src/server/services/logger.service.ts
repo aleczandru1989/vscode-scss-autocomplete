@@ -1,28 +1,35 @@
-import { Connection } from "vscode-languageserver";
-import { SETTINGS } from "../config/settings.config";
+import { Connection } from 'vscode-languageserver';
+
+import { Config } from '../server.config';
+import { formatError } from '../utils/formatter';
 
 export class LoggerService {
     constructor(private connection: Connection) {
     }
 
-    public loggError(message: string) {
-        if (SETTINGS.log.error) {
-            this.connection.window.showErrorMessage(message);
-            console.error(message);
+    public loggError(message: string, error?: any) {
+        const errorMessage = formatError(message, error);
+
+        if (Config.settings.log.error) {
+            this.connection.window.showErrorMessage(errorMessage);
         }
+
+        console.error(errorMessage);
     }
 
     public loggWarning(message: string) {
-        if (SETTINGS.log.warning) {
+        if (Config.settings.log.warning) {
             this.connection.window.showWarningMessage(message);
-            console.warn(message);
         }
+
+        console.warn(message);
     }
 
     public loggInfo(message: string) {
-        if (SETTINGS.log.info) {
+        if (Config.settings.log.info) {
             this.connection.window.showInformationMessage(message);
-            console.log(message);
         }
+
+        console.log(message);
     }
 }

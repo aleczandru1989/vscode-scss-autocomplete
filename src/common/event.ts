@@ -1,0 +1,3 @@
+export const SERVER_EVENT = {
+    WORKSPACE_FILE_URI: 'WORKSPACE_FILE_URI'
+};
