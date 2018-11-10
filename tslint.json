@@ -1,4 +1,5 @@
 {
+	"extends": "tslint:recommended ",
 	"rules": {
 		"no-string-throw": true,
 		"no-unused-expression": true,
@@ -9,7 +10,11 @@
 			true,
 			"always"
 		],
-		"triple-equals": true
+		"triple-equals": true,
+		"quotemark": [
+			true,
+			"single"
+		]
 	},
-	"defaultSeverity": "warning"
+	"defaultSeverity": "error"
 }
