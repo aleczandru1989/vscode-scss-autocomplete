@@ -1,11 +1,12 @@
 import { SymbolInformation } from 'vscode-languageserver-types';
 
-export interface Workspace {
+export class Workspace {
     name: string;
     path: string;
-    symbols: SymbolInformation[];
+    files: WorkspaceFile[] = [];
 }
 
-export interface WorkspaceFile {
+export class WorkspaceFile {
     path: string;
+    variables: SymbolInformation[] = [];
 }

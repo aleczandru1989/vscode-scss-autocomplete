@@ -1,4 +1,4 @@
-import { NodeType } from './nodetype';
+import { NodeType } from '../../../client/models/nodetype';
 
 export class Node {
     public parent: Node | null;

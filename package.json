@@ -71,7 +71,8 @@
         "readdir-enhanced": "2.2.2",
         "vscode-css-languageservice": "3.0.12",
         "vscode-languageclient": "5.1.1",
-        "vscode-languageserver": "5.1.0"
+        "vscode-languageserver": "5.1.0",
+        "lodash": "4.17.11"
     },
     "devDependencies": {
         "@types/readdir-enhanced": "^2.2.0",
