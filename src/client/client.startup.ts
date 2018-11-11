@@ -5,7 +5,6 @@ import { SymbolCache } from './models/symbol';
 import { SCSSCodeActionProvider } from './providers/code-action.provider';
 import { SCSSCompletionItemProvider } from './providers/completion-item.provider';
 import { ServiceProvider } from './providers/service.provider';
-import { SymbolKind } from 'vscode';
 
 export async function activate() {
     await ServiceProvider.symbolService.scanForSymbols();
@@ -19,15 +18,21 @@ export async function activate() {
 
 function triggerAutoImport(document: vscode.TextDocument, symbol: SymbolCache) {
     const edit = new vscode.WorkspaceEdit();
-    const relativePath = path.relative(document.uri.fsPath, symbol.filePath).replace('/', `${'/\\'}`);
-    const scssImport = `@import '${relativePath}';\n`;
-    const isExistingImport = () => symbol.imports.find(x => x.name.trim().toLowerCase() === scssImport.trim().toLowerCase());
+    const relativePath = path.relative(document.uri.fsPath, symbol.filePath).replace(/\\/g, '/');
+    const currentDocumentSymbol = ServiceProvider.symbolService.symbols.find(x => x.filePath === document.uri.fsPath);
 
-    if (!isExistingImport()) {
+    const scssImport = `@import '${relativePath}';\n`;
+    const isExistingImport = currentDocumentSymbol.imports.find(x =>
+        x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase());
+
+    if (!isExistingImport) {
         edit.insert(document.uri, new vscode.Position(0, 0), scssImport);
 
-        vscode.workspace.applyEdit(edit);
-
-        symbol.imports.unshift(ServiceProvider.symbolService.createSymbolInformation(document, scssImport, SymbolKind.Namespace));
+        vscode.workspace.applyEdit(edit).then((isSuccessful) => {
+            if (isSuccessful) {
+                ServiceProvider.symbolService.updateSymbolCache(document.uri);
+            }
+        });
     }
 }
+

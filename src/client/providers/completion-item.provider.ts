@@ -1,9 +1,9 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
+
+import { TriggerKind } from '../models/trigger';
 import { SymbolService } from '../services/symbol.service';
 import { runSafe } from '../utils/runner';
-import { TriggerKind } from '../models/trigger';
-import URI from 'vscode-uri';
-import * as path from 'path';
 
 export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider {
     constructor(private symbolService: SymbolService) { }
@@ -48,7 +48,6 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
                     command: 'scss.toolkit.autoimport',
                     arguments: [document, symbol]
                 }
-
             })));
         });
 

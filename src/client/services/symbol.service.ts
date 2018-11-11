@@ -1,12 +1,12 @@
-import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { getSCSSLanguageService } from 'vscode-css-languageservice';
 import { TextDocument } from 'vscode-languageclient';
-import { Location, Position, Range, SymbolInformation, SymbolKind } from 'vscode-languageserver-types';
+import { Location, Range, SymbolInformation, SymbolKind } from 'vscode-languageserver-types';
 import URI from 'vscode-uri';
 
 import { NodeType } from '../models/nodetype';
 import { SymbolCache } from '../models/symbol';
+import { triggerReadFile } from '../utils/runner';
 import { LoggerService } from './logger.service';
 
 export class SymbolService {
@@ -21,35 +21,31 @@ export class SymbolService {
     public async scanForSymbols() {
         const uris: URI[] = await vscode.workspace.findFiles('**/*.scss', null, 99999);
         const promises: Promise<Symbol>[] = [];
-
-        let i = 0;
-
+        console.log(uris);
         uris.forEach(uri => {
             promises.push(new Promise((resolve) => {
-                fs.readFile(uri.fsPath, (err, buffer) => {
-                    if (err) {
-                        this.loggerService.loggError(`Could not read file from path '${uri.fsPath}'`);
-                    } else {
-                        this.createSymbolCache(uri, buffer.toString());
-                    }
+                triggerReadFile<Symbol>((content: string) => {
+                    const symbolCache = this.createSymbolCache(uri, content);
+                    const isExistingSymbolCache = this.symbols.find(x => x.filePath === uri.fsPath);
 
-                    resolve();
-                });
+                    if (symbolCache && !isExistingSymbolCache) {
+                        this.symbols.push(symbolCache);
+                    }
+                }, uri.fsPath, resolve);
             }));
         });
 
         return Promise.all(promises);
     }
 
-    public createSymbolInformation(document: vscode.TextDocument, name: string, kind: SymbolKind): SymbolInformation {
-        const startPosition = Position.create(0, 0);
-        const endPosition = Position.create(0, name.length);
-
-        return {
-            name: name,
-            kind: kind,
-            location: Location.create(document.uri.fsPath, Range.create(startPosition, endPosition))
-        };
+    public updateSymbolCache(uri: URI) {
+        vscode.workspace.openTextDocument(uri).then((document: vscode.TextDocument) => {
+            this.symbols.forEach((symbol, index) => {
+                if (symbol.filePath === document.uri.fsPath) {
+                    this.symbols[index] = this.createSymbolCache(document.uri, document.getText());
+                }
+            });
+        });
     }
 
     private createSymbolCache(fileUri: URI, fileContent: string) {
@@ -59,12 +55,12 @@ export class SymbolService {
         if (stylesheet.children && stylesheet.children.length > 0) {
             const symbols = this.languageService.findDocumentSymbols(document, stylesheet);
 
-            this.symbols.push({
+            return {
                 filePath: fileUri.fsPath,
                 workspace: vscode.workspace.getWorkspaceFolder(fileUri),
                 imports: this.getSymbols(stylesheet, document, SymbolKind.Namespace),
                 variables: symbols.filter(x => x.kind === SymbolKind.Variable)
-            });
+            };
         }
     }
 
