@@ -1,8 +1,8 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { TriggerKind } from '../models/trigger';
 import { SymbolService } from '../services/symbol.service';
+import { relativePath } from '../utils/formatter';
 import { runSafe } from '../utils/runner';
 
 export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider {
@@ -42,7 +42,7 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
             items = items.concat(...symbol.variables.map(v => ({
                 label: v.name,
                 kind: vscode.CompletionItemKind.Variable,
-                detail: path.relative(document.uri.fsPath, symbol.filePath),
+                detail: relativePath(document.uri.fsPath, symbol.filePath),
                 command: {
                     title: 'Trigger Auto import',
                     command: 'scss.toolkit.autoimport',
