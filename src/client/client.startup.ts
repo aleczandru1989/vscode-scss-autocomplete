@@ -18,10 +18,8 @@ export async function activate() {
 
 function triggerAutoImport(document: vscode.TextDocument, symbol: SymbolCache) {
     const edit = new vscode.WorkspaceEdit();
-    const relativePath = path.relative(document.uri.fsPath, symbol.filePath).replace(/\\/g, '/');
     const currentDocumentSymbol = ServiceProvider.symbolService.symbols.find(x => x.filePath === document.uri.fsPath);
-
-    const scssImport = `@import '${relativePath}';\n`;
+    const scssImport = `@import '${createRelativePath(document, symbol)}';\n`;
     const isExistingImport = currentDocumentSymbol.imports.find(x =>
         x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase());
 
@@ -34,5 +32,21 @@ function triggerAutoImport(document: vscode.TextDocument, symbol: SymbolCache) {
             }
         });
     }
+}
+
+
+function createRelativePath(document: vscode.TextDocument, symbol: SymbolCache) {
+    const relativePath = path.relative(document.uri.fsPath, symbol.filePath);
+    const s = vscode.workspace.asRelativePath(symbol.filePath);
+    //TODO: Fix relative path not imported correctly
+    const pathSegments = relativePath.split('\\');
+    const fileName = pathSegments[pathSegments.length - 1];
+    const isPartialImport = fileName[0] === '_';
+
+    if (isPartialImport) {
+        pathSegments[pathSegments.length - 1] = fileName.replace('_', '').replace('.scss', '');
+    }
+
+    return path.join(...pathSegments).replace(/\\/g, '/');
 }
 
