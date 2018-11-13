@@ -42,7 +42,7 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
             items = items.concat(...symbol.variables.map(v => ({
                 label: v.name,
                 kind: vscode.CompletionItemKind.Variable,
-                detail: relativePath(document.uri.fsPath, symbol.filePath),
+                detail: relativePath(document.uri.fsPath, symbol.fsPath),
                 command: {
                     title: 'Trigger Auto import',
                     command: 'scss.toolkit.autoimport',

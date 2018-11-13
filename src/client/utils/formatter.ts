@@ -12,18 +12,17 @@ export function formatError(message: string, err: any): string {
     return message;
 }
 
-export function formatImport(fromFilePath: string, toFilePath: string) {
+export function formatSymbolImport(fromFilePath: string, toFilePath: string) {
     const pathSegments = relativePath(fromFilePath, toFilePath).split('\\');
     const fileName = pathSegments[pathSegments.length - 1];
     const isPartialImport = fileName[0] === '_';
 
     if (isPartialImport) {
-        pathSegments[pathSegments.length - 1] = fileName.replace('_', '');
+        pathSegments[pathSegments.length - 1] = fileName.replace('_', '').replace('.scss', '');
     }
 
-    return path.join(...pathSegments).replace(/\\/g, '/').replace('.scss', '');
+    return `@import '${path.join(...pathSegments).replace(/\\/g, '/')}'`;
 }
-
 
 export function relativePath(from: string, to: string) {
     return path.relative(path.dirname(from), to);

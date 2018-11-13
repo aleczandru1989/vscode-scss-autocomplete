@@ -2,9 +2,9 @@ import { WorkspaceFolder } from 'vscode';
 import { SymbolInformation } from 'vscode-languageserver-types';
 
 
-export class SymbolCache {
+export class DocumentCache {
     workspace: WorkspaceFolder;
-    filePath: string;
+    fsPath: string;
     imports: SymbolInformation[] = [];
     variables: SymbolInformation[] = [];
 }

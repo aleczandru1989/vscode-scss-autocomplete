@@ -4,29 +4,27 @@ import { TextDocument } from 'vscode-languageclient';
 import { Location, Range, SymbolInformation, SymbolKind } from 'vscode-languageserver-types';
 import URI from 'vscode-uri';
 
+import { DocumentCache } from '../models/document';
 import { NodeType } from '../models/nodetype';
-import { SymbolCache } from '../models/symbol';
 import { triggerReadFile } from '../utils/runner';
 import { LoggerService } from './logger.service';
 
 export class SymbolService {
     private languageService = getSCSSLanguageService();
-
-    public symbols: SymbolCache[] = [];
+    public symbols: DocumentCache[] = [];
 
     constructor(private loggerService: LoggerService) {
-        this.scanForSymbols();
     }
 
-    public async scanForSymbols() {
+    public async createDocumentSymbolCache() {
         const uris: URI[] = await vscode.workspace.findFiles('**/*.scss', null, 99999);
         const promises: Promise<Symbol>[] = [];
-        console.log(uris);
+
         uris.forEach(uri => {
             promises.push(new Promise((resolve) => {
                 triggerReadFile<Symbol>((content: string) => {
-                    const symbolCache = this.createSymbolCache(uri, content);
-                    const isExistingSymbolCache = this.symbols.find(x => x.filePath === uri.fsPath);
+                    const symbolCache = this.createDocumentCache(uri, content);
+                    const isExistingSymbolCache = this.symbols.find(x => x.fsPath === uri.fsPath);
 
                     if (symbolCache && !isExistingSymbolCache) {
                         this.symbols.push(symbolCache);
@@ -38,17 +36,17 @@ export class SymbolService {
         return Promise.all(promises);
     }
 
-    public updateSymbolCache(uri: URI) {
+    public updateDocumentSymbolCache(uri: URI) {
         vscode.workspace.openTextDocument(uri).then((document: vscode.TextDocument) => {
             this.symbols.forEach((symbol, index) => {
-                if (symbol.filePath === document.uri.fsPath) {
-                    this.symbols[index] = this.createSymbolCache(document.uri, document.getText());
+                if (symbol.fsPath === document.uri.fsPath) {
+                    this.symbols[index] = this.createDocumentCache(document.uri, document.getText());
                 }
             });
         });
     }
 
-    private createSymbolCache(fileUri: URI, fileContent: string) {
+    private createDocumentCache(fileUri: URI, fileContent: string): DocumentCache {
         const document = TextDocument.create(fileUri.fsPath, 'scss', 1, fileContent);
         const stylesheet: any = this.languageService.parseStylesheet(document);
 
@@ -56,16 +54,16 @@ export class SymbolService {
             const symbols = this.languageService.findDocumentSymbols(document, stylesheet);
 
             return {
-                filePath: fileUri.fsPath,
+                fsPath: fileUri.fsPath,
                 workspace: vscode.workspace.getWorkspaceFolder(fileUri),
-                imports: this.getSymbols(stylesheet, document, SymbolKind.Namespace),
+                imports: this.getSymbols(stylesheet, document, SymbolKind.Namespace, NodeType.Import),
                 variables: symbols.filter(x => x.kind === SymbolKind.Variable)
             };
         }
     }
 
-    private getSymbols(stylesheet: any, document: TextDocument, kind: SymbolKind): SymbolInformation[] {
-        const imports: Array<any> = stylesheet.children.filter(x => x.type === NodeType.Import);
+    private getSymbols(stylesheet: any, document: TextDocument, kind: SymbolKind, nodeType: NodeType): SymbolInformation[] {
+        const imports: Array<any> = stylesheet.children.filter(x => x.type === nodeType);
         const symbolInformation: SymbolInformation[] = [];
 
         imports.forEach(node => symbolInformation.push({
@@ -77,7 +75,7 @@ export class SymbolService {
         return symbolInformation;
     }
 
-    public getByDocumentWorkspace(document: vscode.TextDocument): SymbolCache[] {
+    public getByDocumentWorkspace(document: vscode.TextDocument): DocumentCache[] {
         return this.symbols.filter(x => x.workspace.name === vscode.workspace.getWorkspaceFolder(document.uri).name);
     }
 
