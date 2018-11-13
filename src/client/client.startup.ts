@@ -4,7 +4,7 @@ import { SymbolCache } from './models/symbol';
 import { SCSSCodeActionProvider } from './providers/code-action.provider';
 import { SCSSCompletionItemProvider } from './providers/completion-item.provider';
 import { ServiceProvider } from './providers/service.provider';
-import { formatPathAsRelative } from './utils/formatter';
+import { formatImport } from './utils/formatter';
 
 export async function activate() {
     await ServiceProvider.symbolService.scanForSymbols();
@@ -19,7 +19,7 @@ export async function activate() {
 function triggerAutoImport(document: vscode.TextDocument, symbol: SymbolCache) {
     const edit = new vscode.WorkspaceEdit();
     const currentDocumentSymbol = ServiceProvider.symbolService.symbols.find(x => x.filePath === document.uri.fsPath);
-    const scssImport = `@import '${formatPathAsRelative(document.uri.fsPath, symbol.filePath)}';\n`;
+    const scssImport = `@import '${formatImport(document.uri.fsPath, symbol.filePath)}';\n`;
     const isExistingImport = currentDocumentSymbol.imports.find(x =>
         x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase());
 

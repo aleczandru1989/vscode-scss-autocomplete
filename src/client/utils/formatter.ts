@@ -12,7 +12,7 @@ export function formatError(message: string, err: any): string {
     return message;
 }
 
-export function formatPathAsRelative(fromFilePath: string, toFilePath: string) {
+export function formatImport(fromFilePath: string, toFilePath: string) {
     const pathSegments = relativePath(fromFilePath, toFilePath).split('\\');
     const fileName = pathSegments[pathSegments.length - 1];
     const isPartialImport = fileName[0] === '_';
