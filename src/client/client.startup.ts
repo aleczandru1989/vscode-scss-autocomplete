@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-
 import { DocumentCache } from './models/document';
 import { SCSSCodeActionProvider } from './providers/code-action.provider';
 import { SCSSCompletionItemProvider } from './providers/completion-item.provider';
 import { ServiceProvider } from './providers/service.provider';
 import { formatSymbolImport } from './utils/formatter';
+
 
 const disposables = new Array<vscode.Disposable>();
 export async function activate() {
@@ -29,10 +29,10 @@ export class SCSSDocumentSymbolProvider implements vscode.DocumentSymbolProvider
     }
 }
 
-function triggerAutoImport(document: vscode.TextDocument, symbol: DocumentCache) {
+function triggerAutoImport(document: vscode.TextDocument, cache: DocumentCache) {
     const edit = new vscode.WorkspaceEdit();
-    const currentDocumentSymbol = ServiceProvider.symbolService.symbols.find(x => x.fsPath === document.uri.fsPath);
-    const scssImport = `${formatSymbolImport(document.uri.fsPath, symbol.fsPath)};\n`;
+    const currentDocumentSymbol = ServiceProvider.symbolService.documentCache.find(x => x.document.uri.fsPath === document.uri.fsPath);
+    const scssImport = `${formatSymbolImport(document.uri.fsPath, cache.document.uri.fsPath)};\n`;
     const isExistingImport = currentDocumentSymbol.imports.find(x =>
         x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase());
 
@@ -41,7 +41,7 @@ function triggerAutoImport(document: vscode.TextDocument, symbol: DocumentCache)
 
         vscode.workspace.applyEdit(edit).then((isSuccessful) => {
             if (isSuccessful) {
-                ServiceProvider.symbolService.updateDocumentSymbolCache(document.uri);
+                ServiceProvider.symbolService.updateCacheByUri(document.uri);
             }
         });
     }
