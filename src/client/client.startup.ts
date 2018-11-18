@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
-import { DocumentCache } from './models/document';
+import { SymbolCache } from './models/document';
 import { SCSSCodeActionProvider } from './providers/code-action.provider';
 import { SCSSCompletionItemProvider } from './providers/completion-item.provider';
 import { ServiceProvider } from './providers/service.provider';
 import { formatSymbolImport } from './utils/formatter';
+import { getTime } from './utils/time';
 
 
 const disposables = new Array<vscode.Disposable>();
 export async function activate() {
+    ServiceProvider.loggerService.loggInfo(`SCSS Toolkit has started building cache at ${getTime()}`);
+
     await ServiceProvider.symbolService.createDocumentSymbolCache();
 
     disposables.push(vscode.commands.registerCommand('scss.toolkit.autoimport', triggerAutoImport));
@@ -17,6 +20,8 @@ export async function activate() {
     disposables.push(vscode.languages.registerCompletionItemProvider(['scss'], new SCSSCompletionItemProvider(ServiceProvider.symbolService)));
 
     disposables.push(vscode.languages.registerDocumentSymbolProvider(['scss'], new SCSSDocumentSymbolProvider()));
+
+    ServiceProvider.loggerService.loggInfo(`SCSS Toolkit has finished building cache at ${getTime()}`);
 }
 
 export function deactivate() {
@@ -29,9 +34,9 @@ export class SCSSDocumentSymbolProvider implements vscode.DocumentSymbolProvider
     }
 }
 
-function triggerAutoImport(document: vscode.TextDocument, cache: DocumentCache) {
+function triggerAutoImport(document: vscode.TextDocument, cache: SymbolCache) {
     const edit = new vscode.WorkspaceEdit();
-    const currentDocumentSymbol = ServiceProvider.symbolService.documentCache.find(x => x.document.uri.fsPath === document.uri.fsPath);
+    const currentDocumentSymbol = ServiceProvider.symbolService.symbolCaches.find(x => x.document.uri.fsPath === document.uri.fsPath);
     const scssImport = `${formatSymbolImport(document.uri.fsPath, cache.document.uri.fsPath)};\n`;
     const isExistingImport = currentDocumentSymbol.imports.find(x =>
         x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase());

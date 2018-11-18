@@ -1,82 +1,166 @@
 import * as vscode from 'vscode';
 import { getSCSSLanguageService, SymbolKind } from 'vscode-css-languageservice';
 import URI from 'vscode-uri';
-import { DocumentCache, SymbolCacheImport } from '../models/document';
+import { SymbolCache, SymbolImport } from '../models/document';
 import { NodeType } from '../models/nodetype';
 import { Node, StyleSheet } from '../models/stylesheet';
 import { absolutePathFromImport } from '../utils/formatter';
-import { isSupportedImport } from '../utils/validator';
+import { getTime } from '../utils/time';
 import { LoggerService } from './logger.service';
 
 export class SymbolService {
     private languageService = getSCSSLanguageService();
-    public documentCache: DocumentCache[] = [];
+    public symbolCaches: SymbolCache[] = [];
 
     constructor(private loggerService: LoggerService) {
     }
 
     public async createDocumentSymbolCache(): Promise<void> {
-        //TODO: Use user information for patterns
-        const uris: vscode.Uri[] = await vscode.workspace.findFiles('**/*.scss');
+        await this.createSymbolCaches();
 
-        for (const uri of uris) {
-            const document: any = await vscode.workspace.openTextDocument(uri);
-            const stylesheet = <StyleSheet>this.languageService.parseStylesheet(document);
-            const workspace = vscode.workspace.getWorkspaceFolder(uri);
-
-            const cache = new DocumentCache(document, stylesheet, workspace);
-            cache.imports = this.getImportSymbols(cache);
-
-            this.documentCache.push(cache);
-        }
-
-        for (const cache of this.documentCache) {
-            cache.variables = this.getSymbolsByImports(cache, SymbolKind.Variable, NodeType.VariableDeclaration);
-        }
+        this.setSymbolDependencies();
     }
 
     public updateCacheByUri(uri: URI) {
-        vscode.workspace.openTextDocument(uri).then((document: vscode.TextDocument) => {
-            const cache = this.documentCache.find(x => x.document.uri.fsPath === uri.fsPath);
-            cache.document = document;
-            cache.imports = this.getImportSymbols(cache);
-            cache.variables = this.getSymbolsByImports(cache, SymbolKind.Variable, NodeType.VariableDeclaration);
-        });
+        // vscode.workspace.openTextDocument(uri).then((document: vscode.TextDocument) => {
+        //     const cache = this.documentCache.find(x => x.document.uri.fsPath === uri.fsPath);
+        //     cache.document = document;
+        //     cache.imports = this.getImportSymbols(cache);
+        //     cache.variables = this.getSymbolsByImports(cache, SymbolKind.Variable, NodeType.VariableDeclaration);
+        // });
     }
 
-    public getByDocumentWorkspace(document: vscode.TextDocument): DocumentCache[] {
-        return this.documentCache.filter(x => x.workspace.name === vscode.workspace.getWorkspaceFolder(document.uri).name);
+    public getByDocumentWorkspace(document: vscode.TextDocument): SymbolCache[] {
+        return this.symbolCaches.filter(x => x.workspace.name === vscode.workspace.getWorkspaceFolder(document.uri).name);
     }
 
-    private getSymbolsByImports(cache: DocumentCache, kind: SymbolKind, nodeType: NodeType): vscode.SymbolInformation[] {
-        let variables = this.getSymbols(cache, kind, nodeType);
+    private setSymbolDependencies() {
+        this.loggerService.loggInfo(`SCSS Toolkit has started configuring symbols at  ${getTime()}`);
 
-        cache.imports.forEach(importSymbol => {
-            if (isSupportedImport(importSymbol.name)) {
-                const importCache = this.documentCache.find(x => x.document.uri.fsPath === importSymbol.fsDocPath);
+        for (const symbolCache of this.symbolCaches) {
+            symbolCache.isPublic = this.isPublicSymbol(symbolCache);
 
-                if (importCache) {
-                    variables = variables.concat(this.getSymbolsByImports(importCache, kind, nodeType));
-                } else {
-                    this.loggerService.loggWarning(`Document from '${cache.document.uri.fsPath}' with import rule '${importSymbol.name}' could not resolve path '${importSymbol.fsDocPath}'`);
+            symbolCache.children = this.getSymbolCachesByPaths(symbolCache.imports.map(x => x.fsPath));
+
+            symbolCache.variables = this.getSymbols(symbolCache, SymbolKind.Variable, NodeType.VariableDeclaration);
+        }
+
+        this.loggerService.loggInfo(`SCSS Toolkit has finished configuring symbols at  ${getTime()}`);
+    }
+
+    private async createSymbolCaches() {
+        //TODO: get this from config
+        const pattern = '**/*.scss';
+        this.loggerService.loggInfo(`SCSS Toolkit has started searching for files with pattern ${pattern} at ${getTime()}`);
+
+        const uris: vscode.Uri[] = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
+
+        this.loggerService.loggInfo(`SCSS Toolkit has finished searching for files at ${getTime()}`);
+
+        this.loggerService.loggInfo(`SCSS Toolkit has started creating symbols at  ${getTime()}`);
+
+        for (const uri of uris) {
+            await this.createSymbolCache(uri);
+        }
+
+        this.loggerService.loggInfo(`SCSS Toolkit has finished creating symbols at ${getTime()}`);
+    }
+
+
+    private async createSymbolCache(uri: vscode.Uri) {
+        const existingSymbolCache = this.getSymbolCacheByPath(uri.fsPath, false);
+
+        if (!existingSymbolCache) {
+            const symbolCache = await this.createSymbol(uri);
+
+            symbolCache.imports = this.getImportSymbols(symbolCache);
+
+            for (const symbolImport of symbolCache.imports) {
+                if (symbolImport.fsPath) {
+                    await this.createSymbolCache(vscode.Uri.file(symbolImport.fsPath));
                 }
+            }
+
+            this.symbolCaches.push(symbolCache);
+        }
+    }
+
+    private async createSymbol(uri: vscode.Uri) {
+        const document: any = await vscode.workspace.openTextDocument(uri);
+        const workspace = vscode.workspace.getWorkspaceFolder(uri);
+
+        const stylesheet = <StyleSheet>this.languageService.parseStylesheet(document);
+        stylesheet.children = stylesheet.children ? stylesheet.children : [];
+
+        return new SymbolCache(document, stylesheet, workspace);
+    }
+
+    private getSymbolCachesByPaths(fsPaths: string[]): SymbolCache[] {
+        const symbolCaches = [];
+
+        fsPaths.forEach(fsPath => {
+            const symbolCache = this.getSymbolCacheByPath(fsPath);
+
+            if (symbolCache) {
+                symbolCaches.push(symbolCache);
             }
         });
 
-        return variables;
+        return symbolCaches;
     }
 
-    private getImportSymbols(cache: DocumentCache): SymbolCacheImport[] {
-        const imports = <Array<SymbolCacheImport>>this.getSymbols(cache, SymbolKind.Namespace, NodeType.Import);
+    private getSymbolCacheByPath(fsPath: string, isErrorLoginEnabled = true): SymbolCache {
+        const symbolCache = this.symbolCaches.find(x => x.document.uri.fsPath === fsPath);
 
-        imports.forEach((importSymbol: SymbolCacheImport) => {
-            importSymbol.fsDocPath = absolutePathFromImport(cache.document.uri.fsPath, importSymbol.name);
+        if (!symbolCache && isErrorLoginEnabled) {
+            this.loggerService.loggWarning(`SymbolCache with fsPath '${fsPath}' could not be resolved`);
+        }
+
+        return symbolCache;
+    }
+
+    private getParentSymbols(fsPath: string): SymbolCache[] {
+        return this.symbolCaches
+            .filter(x => x.imports.find(y => y.fsPath === fsPath));
+    }
+
+    private isPublicSymbol(symbolCache: SymbolCache, isRoot = true): boolean {
+        let isPublic = symbolCache.stylesheet.children.filter(child => !this.isPublicNode(child.type)).length === 0;
+
+        symbolCache.imports.forEach(symbolImport => {
+            const symbolCache = this.getSymbolCacheByPath(symbolImport.fsPath);
+
+            if (symbolCache) {
+                isPublic = isPublic && this.isPublicSymbol(symbolCache, false);
+            }
+        });
+
+        if (isRoot) {
+            this.getParentSymbols(symbolCache.document.uri.fsPath).forEach((parentSymbol) => {
+                isPublic = isPublic && !this.isPublicSymbol(parentSymbol);
+            });
+        }
+
+        return isPublic;
+    }
+
+    private isPublicNode(type: NodeType) {
+        return type === NodeType.VariableDeclaration ||
+            type === NodeType.MixinDeclaration ||
+            type === NodeType.Import;
+    }
+
+    private getImportSymbols(cache: SymbolCache): SymbolImport[] {
+        const imports = <Array<SymbolImport>>this.getSymbols(cache, SymbolKind.Namespace, NodeType.Import);
+
+        imports.forEach((importSymbol: SymbolImport) => {
+            importSymbol.fsPath = absolutePathFromImport(cache.document.uri.fsPath, importSymbol.name);
         });
 
         return imports;
     }
 
-    private getSymbols(cache: DocumentCache, kind: SymbolKind, nodeType: NodeType): vscode.SymbolInformation[] {
+    private getSymbols(cache: SymbolCache, kind: SymbolKind, nodeType: NodeType): vscode.SymbolInformation[] {
         const symbolInformation: vscode.SymbolInformation[] = [];
 
         if (cache.stylesheet.children && cache.stylesheet.children.length > 0) {
