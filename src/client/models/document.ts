@@ -15,7 +15,11 @@ export class SymbolCache {
     document: vscode.TextDocument;
     stylesheet: StyleSheet;
     imports: SymbolImport[] = [];
-    variables: vscode.SymbolInformation[] = [];
+    variables: SymbolVariable[] = [];
+}
+
+export class SymbolVariable extends vscode.SymbolInformation {
+    value: string;
 }
 
 export class SymbolImport extends vscode.SymbolInformation {

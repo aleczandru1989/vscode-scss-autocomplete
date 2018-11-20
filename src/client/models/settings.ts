@@ -10,6 +10,6 @@ export class Settings {
         info: true,
         warning: true
     };
-    public exclude = [];
-    public include = [];
+    public excludePattern = '**/node_modules/**';
+    public includePattern = '**/*.scss';
 }

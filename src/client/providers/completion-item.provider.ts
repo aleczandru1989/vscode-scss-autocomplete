@@ -4,7 +4,6 @@ import { SymbolService } from '../services/symbol.service';
 import { relativePath } from '../utils/formatter';
 import { runSafe } from '../utils/runner';
 
-
 export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider {
     constructor(private symbolService: SymbolService) { }
     public provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
@@ -36,13 +35,15 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
 
     private createVariables(document: vscode.TextDocument): vscode.CompletionItem[] {
         let items: vscode.CompletionItem[] = [];
+
         const caches = this.symbolService.getByDocumentWorkspace(document);
 
         caches.forEach(cache => {
             items = items.concat(...cache.variables.map(v => ({
                 label: v.name,
                 kind: vscode.CompletionItemKind.Variable,
-                detail: relativePath(document.uri.fsPath, cache.document.uri.fsPath),
+                detail: v.value,
+                documentation: relativePath(document.uri.fsPath, cache.document.uri.fsPath),
                 command: {
                     title: 'Trigger Auto import',
                     command: 'scss.toolkit.autoimport',

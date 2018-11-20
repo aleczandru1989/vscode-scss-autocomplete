@@ -15,7 +15,7 @@ export function formatError(message: string, err: any): string {
     return message;
 }
 
-export function formatSymbolImport(fromFilePath: string, toFilePath: string) {
+export function formatSymbolImport(fromFilePath: string, toFilePath: string, isImportIncluded = true) {
     const pathSegments = relativePath(fromFilePath, toFilePath).split('\\');
     const fileName = pathSegments[pathSegments.length - 1];
     const isPartialImport = fileName[0] === '_';
@@ -24,14 +24,16 @@ export function formatSymbolImport(fromFilePath: string, toFilePath: string) {
         pathSegments[pathSegments.length - 1] = fileName.replace('_', '').replace('.scss', '');
     }
 
-    return `@import '${path.join(...pathSegments).replace(/\\/g, '/')}'`;
+    const importString = isImportIncluded ? '@import ' : '';
+
+    return `${importString} '${path.join(...pathSegments).replace(/\\/g, '/')}'`;
 }
 
 export function relativePath(from: string, to: string) {
     return path.relative(path.dirname(from), to);
 }
 
-export function absolutePathFromImport(fromFsPath: string, importTo: string) {
+export function fsPathForImport(fromFsPath: string, importTo: string) {
     if (isSupportedImport(importTo)) {
         let fsPathTo = trimImportCharacter(importTo);
 

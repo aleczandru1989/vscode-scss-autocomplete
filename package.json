@@ -72,11 +72,11 @@
         "vscode-css-languageservice": "3.0.12",
         "vscode-languageclient": "5.1.1",
         "vscode-languageserver": "5.1.0",
-        "lodash": "4.17.11",
-        "directory-tree": "2.1.0"
+        "lodash": "4.17.11"
     },
     "devDependencies": {
         "@types/readdir-enhanced": "^2.2.0",
+        "@types/lodash": "4.14.118",
         "typescript": "^2.6.1",
         "tslint": "^5.11.0",
         "@types/node": "^10.12.2",

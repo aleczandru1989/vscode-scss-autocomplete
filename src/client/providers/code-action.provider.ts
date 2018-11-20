@@ -1,28 +1,34 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { SymbolService } from '../services/symbol.service';
-import { formatSymbolImport, relativePath } from '../utils/formatter';
-
+import { formatSymbolImport } from '../utils/formatter';
+import { isExistingImport } from './../commands/autoimport.command';
 
 export class SCSSCodeActionProvider implements vscode.CodeActionProvider {
 
-    constructor(private serviceProvider: SymbolService) { }
+    constructor(private symbolService: SymbolService) { }
 
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.ProviderResult<(vscode.Command | vscode.CodeAction)[]> {
-        this.serviceProvider.updateCacheByUri(document.uri);
-
+        this.symbolService.update(document.uri);
         const actions = new Array<vscode.CodeAction>();
         const wordRange = document.getWordRangeAtPosition(range.start);
         const word = document.getText(wordRange);
 
-        const caches = this.serviceProvider.symbolCaches.filter(x => x.variables.find(y => y.name === word));
-        const currentSymbol = this.serviceProvider.symbolCaches.find(x => x.document.uri.fsPath === document.uri.fsPath);
+        //TODO: get caches from current workspace
+        const symbolCaches = this.symbolService.getByDocumentWorkspace(document);
+
+        const caches = symbolCaches.filter(x => x.variables.find(y => y.name === word));
+        const currentSymbol = symbolCaches.find(x => x.document.uri.fsPath === document.uri.fsPath);
 
         caches.forEach(cache => {
-            const isExistingImport = currentSymbol.imports.find(x => x.name === formatSymbolImport(document.uri.fsPath, cache.document.uri.fsPath));
+            const importPath = formatSymbolImport(document.uri.fsPath, cache.document.uri.fsPath);
 
-            if (!isExistingImport) {
+            if (!isExistingImport(currentSymbol, importPath)) {
+                const pathToImport = importPath.replace('@import', '');
+                const importMessage = `Add '${path.basename(cache.document.uri.fsPath)}' from '${pathToImport}'`;
+
                 actions.push({
-                    title: relativePath(document.uri.fsPath, cache.document.uri.fsPath),
+                    title: importMessage,
                     command: {
                         title: 'Trigger Auto import',
                         command: 'scss.toolkit.autoimport',

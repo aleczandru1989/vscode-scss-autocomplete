@@ -5,6 +5,7 @@ export type StyleSheet = {
 };
 
 export type Node = {
+    children: Node,
     type: NodeType,
     offset: number,
     end: number,
