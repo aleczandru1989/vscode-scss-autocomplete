@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
+import { SymbolKind } from 'vscode-css-languageservice';
 import { SymbolCache } from '../models/document';
-import { TriggerKind } from '../models/trigger';
 import { SymbolService } from '../services/symbol.service';
 import { relativePath } from '../utils/formatter';
 import { runSafe } from '../utils/runner';
@@ -30,9 +30,12 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
 
         if (activeSymbol) {
             const word = getWord(document, position);
+            const kind = this.symbolService.getSymbolKindByName(word);
 
-            if (this.isVariableTrigger(word)) {
-                completionItems = this.createVariables(activeSymbol);
+            switch (kind) {
+                case SymbolKind.Variable:
+                    completionItems = this.createVariables(activeSymbol);
+                    break;
             }
         }
 
@@ -59,9 +62,5 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
         });
 
         return items;
-    }
-
-    private isVariableTrigger(word: string) {
-        return word[0] === TriggerKind.$;
     }
 }

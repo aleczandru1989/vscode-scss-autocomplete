@@ -29,12 +29,6 @@ export function formatSymbolImport(fromFilePath: string, toFilePath: string, isI
     return `${importString} '${path.join(...pathSegments).replace(/\\/g, '/')}'`;
 }
 
-export function trimImport(importSymbol: string) {
-    return importSymbol.replace('@import', '')
-        .replace(';', '')
-        .trim()
-        .toLowerCase();
-}
 
 export function relativePath(from: string, to: string) {
     return path.relative(path.dirname(from), to);
@@ -42,7 +36,7 @@ export function relativePath(from: string, to: string) {
 
 export function fsPathForImport(fromFsPath: string, importTo: string) {
     if (isSupportedImport(importTo)) {
-        let fsPathTo = trimImportCharacter(importTo);
+        let fsPathTo = trimImportCharacters(importTo);
 
         let absolutePathResult = path.resolve(path.dirname(fromFsPath), fsPathTo);
 
@@ -64,7 +58,7 @@ export function fsPathForImport(fromFsPath: string, importTo: string) {
     }
 }
 
-export function trimImportCharacter(importPath: string) {
+export function trimImportCharacters(importPath: string) {
     return importPath.replace('@import', '')
         .replace(';', '')
         .replace('"', '')

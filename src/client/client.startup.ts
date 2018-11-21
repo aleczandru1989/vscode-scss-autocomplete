@@ -6,17 +6,11 @@ import { SCSSCompletionItemProvider } from './providers/completion-item.provider
 import { ServiceProvider } from './providers/service.provider';
 import { getTime } from './utils/time';
 
-
 const disposables = new Array<vscode.Disposable>();
 export async function activate() {
     ServiceProvider.loggerService.loggInfo(`SCSS Toolkit has started building cache at ${getTime()}`);
 
     await ServiceProvider.symbolService.createDocumentSymbolCache();
-
-    const watcher = vscode.workspace.createFileSystemWatcher(ServiceProvider.settings.includePattern);
-    disposables.push(watcher.onDidChange(fileChange));
-    disposables.push(watcher.onDidCreate(fileCreate));
-    disposables.push(watcher.onDidDelete(fileDelete));
 
     disposables.push(vscode.commands.registerCommand('scss.toolkit.autoimport', triggerAutoImport));
 
@@ -25,6 +19,12 @@ export async function activate() {
     disposables.push(vscode.languages.registerCompletionItemProvider(['scss'], new SCSSCompletionItemProvider(ServiceProvider.symbolService)));
 
     disposables.push(vscode.workspace.onDidChangeTextDocument((change) => fileChange(change.document.uri)));
+
+    const watcher = vscode.workspace.createFileSystemWatcher(ServiceProvider.settings.includePattern);
+    disposables.push(watcher.onDidChange(fileChange));
+    disposables.push(watcher.onDidCreate(fileCreate));
+    disposables.push(watcher.onDidDelete(fileDelete));
+    disposables.push(watcher);
 
     ServiceProvider.loggerService.loggInfo(`SCSS Toolkit has finished building cache at ${getTime()}`);
 }

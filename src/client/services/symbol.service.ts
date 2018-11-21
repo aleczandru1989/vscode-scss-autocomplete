@@ -59,6 +59,28 @@ export class SymbolService {
         }
     }
 
+    public getSymbolsByName(symbolName: string): SymbolCache[] {
+        const workspaceSymbols = this.getSymbolsByWorkspace(vscode.window.activeTextEditor.document);
+        const kind = this.getSymbolKindByName(symbolName);
+
+        switch (kind) {
+            case SymbolKind.Namespace:
+                return workspaceSymbols.filter(x => x.imports.find(y => y.name === symbolName));
+            case SymbolKind.Variable:
+                return workspaceSymbols.filter(x => x.variables.find(y => y.name === symbolName));
+            default:
+                return [];
+        }
+    }
+
+    public getSymbolKindByName(symbolName: string): SymbolKind {
+        if (symbolName.startsWith('$')) {
+            return SymbolKind.Variable;
+        } else if (symbolName.startsWith('@import')) {
+            return SymbolKind.Namespace;
+        }
+    }
+
     public getSymbolsByWorkspace(document: vscode.TextDocument): SymbolCache[] {
         return this.symbolCaches.filter(x => x.workspace.name === vscode.workspace.getWorkspaceFolder(document.uri).name);
     }
@@ -146,22 +168,16 @@ export class SymbolService {
             .filter(x => x.imports.find(y => y.fsPath === fsPath));
     }
 
-    private isPublicSymbol(symbolCache: SymbolCache, isRoot = true): boolean {
+    private isPublicSymbol(symbolCache: SymbolCache): boolean {
         let isPublic = symbolCache.stylesheet.children.filter(child => !this.isPublicNode(child.type)).length === 0;
 
         symbolCache.imports.forEach(symbolImport => {
             const symbolCache = this.getSymbolCacheByPath(symbolImport.fsPath);
 
             if (symbolCache) {
-                isPublic = isPublic && this.isPublicSymbol(symbolCache, false);
+                isPublic = isPublic && this.isPublicSymbol(symbolCache);
             }
         });
-
-        if (isRoot) {
-            this.getParentSymbols(symbolCache.document.uri.fsPath).forEach((parentSymbol) => {
-                isPublic = isPublic && !this.isPublicSymbol(parentSymbol);
-            });
-        }
 
         return isPublic;
     }
