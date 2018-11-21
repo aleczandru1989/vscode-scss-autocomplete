@@ -24,6 +24,8 @@ export async function activate() {
 
     disposables.push(vscode.languages.registerCompletionItemProvider(['scss'], new SCSSCompletionItemProvider(ServiceProvider.symbolService)));
 
+    disposables.push(vscode.workspace.onDidChangeTextDocument((change) => fileChange(change.document.uri)));
+
     ServiceProvider.loggerService.loggInfo(`SCSS Toolkit has finished building cache at ${getTime()}`);
 }
 
@@ -32,16 +34,14 @@ export function deactivate() {
 }
 
 function fileChange(uri: URI) {
-    setTimeout(() => {
-        console.log(uri.fsPath);
-    }, 1500);
+    ServiceProvider.symbolService.update(uri);
 }
 
 function fileCreate(uri: URI) {
-
+    ServiceProvider.symbolService.create(uri);
 }
 
 function fileDelete(uri: URI) {
-
+    ServiceProvider.symbolService.delete(uri);
 }
 

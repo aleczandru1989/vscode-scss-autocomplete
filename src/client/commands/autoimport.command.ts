@@ -1,29 +1,31 @@
 import * as vscode from 'vscode';
 import { SymbolCache } from '../models/document';
 import { ServiceProvider } from '../providers/service.provider';
-import { formatSymbolImport } from '../utils/formatter';
+import { formatSymbolImport, trimImport } from '../utils/formatter';
 
-export function triggerAutoImport(document: vscode.TextDocument, symbolCache: SymbolCache) {
-    const edit = new vscode.WorkspaceEdit();
+export function triggerAutoImport(activeSymbolCache: SymbolCache, importedSymbolCache: SymbolCache) {
+    const scssImport = `${formatSymbolImport(activeSymbolCache.document.uri.fsPath, importedSymbolCache.document.uri.fsPath)};\n`;
 
-    const scssImport = `${formatSymbolImport(document.uri.fsPath, symbolCache.document.uri.fsPath)};\n`;
+    if (!isExistingImport(activeSymbolCache, scssImport)) {
+        const edit = new vscode.WorkspaceEdit();
 
-    if (!isExistingImport(symbolCache, scssImport)) {
-        edit.insert(document.uri, new vscode.Position(0, 0), scssImport);
+        edit.insert(activeSymbolCache.document.uri, new vscode.Position(0, 0), scssImport);
 
-        vscode.workspace.applyEdit(edit).then((isSuccessful) => {
-            if (isSuccessful) {
-                ServiceProvider.symbolService.update(document.uri);
-            }
-        });
+        vscode.workspace.applyEdit(edit)
+            .then((isSuccessful) => {
+                if (isSuccessful) {
+                    ServiceProvider.symbolService.update(activeSymbolCache.document.uri);
+                }
+            });
     }
 }
 
-export function isExistingImport(symbolCache: SymbolCache, scssImport: string) {
-    let isExistingImportResult = symbolCache.imports.find(
-        x => x.name.trim().toLowerCase() === scssImport.trim().replace(';', '').toLowerCase()) !== undefined;
+export function isExistingImport(activeSymbolCache: SymbolCache, scssImport: string) {
+    const trimmedImport = trimImport(scssImport);
 
-    for (const childSymbolCache of symbolCache.children) {
+    let isExistingImportResult = activeSymbolCache.imports.find(x => trimImport(x.name) === trimmedImport) !== undefined;
+
+    for (const childSymbolCache of activeSymbolCache.children) {
         if (isExistingImport(childSymbolCache, scssImport)) {
             isExistingImportResult = true;
             break;

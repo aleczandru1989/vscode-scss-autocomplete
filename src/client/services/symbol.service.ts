@@ -10,7 +10,6 @@ import { getTime } from '../utils/time';
 import { LoggerService } from './logger.service';
 
 export class SymbolService {
-
     private languageService = getSCSSLanguageService();
     public symbolCaches: SymbolCache[] = [];
 
@@ -34,8 +33,38 @@ export class SymbolService {
         });
     }
 
-    public getByDocumentWorkspace(document: vscode.TextDocument): SymbolCache[] {
+    public delete(uri: URI) {
+        this.symbolCaches.forEach((cache, index) => {
+            if (cache.document.uri.fsPath === uri.fsPath) {
+                this.symbolCaches.splice(index, 1);
+            }
+        });
+    }
+
+    public async create(uri: vscode.Uri) {
+        const existingSymbolCache = this.getSymbolCacheByPath(uri.fsPath, false);
+
+        if (!existingSymbolCache) {
+            const symbolCache = await this.createSymbol(uri);
+
+            symbolCache.imports = this.getImportSymbols(symbolCache);
+
+            for (const symbolImport of symbolCache.imports) {
+                if (symbolImport.fsPath) {
+                    await this.create(vscode.Uri.file(symbolImport.fsPath));
+                }
+            }
+
+            this.symbolCaches.push(symbolCache);
+        }
+    }
+
+    public getSymbolsByWorkspace(document: vscode.TextDocument): SymbolCache[] {
         return this.symbolCaches.filter(x => x.workspace.name === vscode.workspace.getWorkspaceFolder(document.uri).name);
+    }
+
+    public getSymbolByUri(uri: URI) {
+        return this.symbolCaches.find(x => x.document.uri.fsPath === uri.fsPath);
     }
 
     private setSymbolsConfig() {
@@ -66,28 +95,10 @@ export class SymbolService {
         this.loggerService.loggInfo(`SCSS Toolkit has started creating symbols at  ${getTime()}`);
 
         for (const uri of uris) {
-            await this.createSymbolCache(uri);
+            await this.create(uri);
         }
 
         this.loggerService.loggInfo(`SCSS Toolkit has finished creating symbols at ${getTime()}`);
-    }
-
-    private async createSymbolCache(uri: vscode.Uri) {
-        const existingSymbolCache = this.getSymbolCacheByPath(uri.fsPath, false);
-
-        if (!existingSymbolCache) {
-            const symbolCache = await this.createSymbol(uri);
-
-            symbolCache.imports = this.getImportSymbols(symbolCache);
-
-            for (const symbolImport of symbolCache.imports) {
-                if (symbolImport.fsPath) {
-                    await this.createSymbolCache(vscode.Uri.file(symbolImport.fsPath));
-                }
-            }
-
-            this.symbolCaches.push(symbolCache);
-        }
     }
 
     private async createSymbol(uri: vscode.Uri) {

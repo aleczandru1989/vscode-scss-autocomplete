@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
+import { SymbolCache } from '../models/document';
 import { TriggerKind } from '../models/trigger';
 import { SymbolService } from '../services/symbol.service';
 import { relativePath } from '../utils/formatter';
 import { runSafe } from '../utils/runner';
+import { getWord } from '../utils/text';
 
 export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider {
     constructor(private symbolService: SymbolService) { }
+
     public provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
         return runSafe(() => {
             if (!document) {
@@ -22,32 +25,35 @@ export class SCSSCompletionItemProvider implements vscode.CompletionItemProvider
     }
 
     private getCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] {
-        const range = document.getWordRangeAtPosition(position);
-        const word = range ? document.getText(range) : '';
+        const activeSymbol = this.symbolService.getSymbolByUri(document.uri);
         let completionItems: vscode.CompletionItem[];
 
-        if (this.isVariableTrigger(word)) {
-            completionItems = this.createVariables(document);
+        if (activeSymbol) {
+            const word = getWord(document, position);
+
+            if (this.isVariableTrigger(word)) {
+                completionItems = this.createVariables(activeSymbol);
+            }
         }
 
         return completionItems;
     }
 
-    private createVariables(document: vscode.TextDocument): vscode.CompletionItem[] {
+    private createVariables(activeSymbol: SymbolCache): vscode.CompletionItem[] {
         let items: vscode.CompletionItem[] = [];
 
-        const caches = this.symbolService.getByDocumentWorkspace(document);
+        const symbolCaches = this.symbolService.getSymbolsByWorkspace(activeSymbol.document);
 
-        caches.forEach(cache => {
-            items = items.concat(...cache.variables.map(v => ({
+        symbolCaches.forEach(symbolCache => {
+            items = items.concat(...symbolCache.variables.map(v => ({
                 label: v.name,
                 kind: vscode.CompletionItemKind.Variable,
                 detail: v.value,
-                documentation: relativePath(document.uri.fsPath, cache.document.uri.fsPath),
+                documentation: relativePath(activeSymbol.document.uri.fsPath, symbolCache.document.uri.fsPath),
                 command: {
                     title: 'Trigger Auto import',
                     command: 'scss.toolkit.autoimport',
-                    arguments: [document, cache]
+                    arguments: [activeSymbol, symbolCache]
                 }
             })));
         });

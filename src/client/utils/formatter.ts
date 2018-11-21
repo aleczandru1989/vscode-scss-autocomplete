@@ -29,6 +29,13 @@ export function formatSymbolImport(fromFilePath: string, toFilePath: string, isI
     return `${importString} '${path.join(...pathSegments).replace(/\\/g, '/')}'`;
 }
 
+export function trimImport(importSymbol: string) {
+    return importSymbol.replace('@import', '')
+        .replace(';', '')
+        .trim()
+        .toLowerCase();
+}
+
 export function relativePath(from: string, to: string) {
     return path.relative(path.dirname(from), to);
 }

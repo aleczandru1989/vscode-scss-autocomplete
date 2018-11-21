@@ -45,13 +45,13 @@
         "Language Packs"
     ],
     "activationEvents": [
-        "onLanguage:scss"
+        "workspaceContains:**/*.scss"
     ],
     "keywords": [
         "SCSS",
         "SCSS Autocomplete",
         "SCSS Intellisense",
-        "autocompletion",
+        "autocomplete",
         "intellisense"
     ],
     "main": "./out/client/client.startup",
